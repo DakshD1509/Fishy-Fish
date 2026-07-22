@@ -1,0 +1,75 @@
+# Runs the engine as a Lichess bot on GitHub Actions.
+#
+# Continuous-handoff design (GitHub Actions caps jobs at 6h):
+#  * timeout-minutes 350 (~5h50m) + a 5h cron relaunch.
+#  * concurrency queues the next run so it takes over as the current one ends
+#    (gaps self-heal and cost no rating — an idle Lichess bot isn't penalized).
+#  * Free minutes REQUIRE A PUBLIC REPO.
+#
+# Setup:
+#  1. Make the repo PUBLIC.
+#  2. Add a repository secret LICHESS_BOT_TOKEN (a Lichess BOT token, bot:play scope).
+#  3. Actions tab -> run "lichess-bot" once (workflow_dispatch).
+name: lichess-bot
+
+on:
+  workflow_dispatch: {}          # manual start / restart
+  schedule:
+    - cron: "0 */5 * * *"        # every 5h; with the 5h50m timeout this hands off continuously
+
+# One bot instance at a time; don't cancel a running bot when a new schedule fires —
+# let it queue and take over when the current job times out.
+concurrency:
+  group: lichess-bot
+  cancel-in-progress: false
+
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350         # ~5h50m, safely under the 6h hard cap
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++ make python3 python3-pip python3-venv curl
+          g++ --version | head -1
+
+      - name: Build engine (embeds NNUE net) + self-test
+        run: |
+          git clone --depth 1 -b sf_17 https://github.com/official-stockfish/Stockfish.git stockfish_src
+          cd stockfish_src/src
+          make -j build ARCH=x86-64-avx2 COMP=gcc
+          cp stockfish ../../stockfish
+          cd ../../
+          ./stockfish bench 2>&1 | tail -3        # must print "Nodes searched"
+
+      - name: Fetch opening book
+        run: |
+          mkdir -p book
+          if [ ! -s book/komodo.bin ]; then
+            curl -L --fail --retry 3 -o book/komodo.bin \
+              "https://raw.githubusercontent.com/michaeldv/donna_opening_books/master/komodo.bin"
+          fi
+
+      - name: Install lichess-bot
+        run: |
+          git clone --depth 1 https://github.com/lichess-bot-devs/lichess-bot.git ../lichess-bot
+          python3 -m pip install --quiet -r ../lichess-bot/requirements.txt
+
+      - name: Configure lichess-bot
+        env:
+          BOT_TOKEN: ${{ secrets.LICHESS_BOT_TOKEN }}
+        run: |
+          test -n "${BOT_TOKEN}" || { echo "LICHESS_BOT_TOKEN secret is not set"; exit 1; }
+          cp deploy/config.yml ../lichess-bot/config.yml
+          cd ../lichess-bot
+          # Inject token (masked in logs) and point the container paths at this checkout.
+          sed -i "s|PASTE_YOUR_BOT_TOKEN_HERE|${BOT_TOKEN}|" config.yml
+          sed -i "s|/app/engine|${GITHUB_WORKSPACE}|" config.yml
+
+      - name: Run bot until job timeout
+        working-directory: ../lichess-bot
+        run: python3 lichess-bot.py
