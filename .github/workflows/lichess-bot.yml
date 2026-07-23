@@ -69,7 +69,10 @@ jobs:
           # Inject token (masked in logs) and point the container paths at this checkout.
           sed -i "s|PASTE_YOUR_BOT_TOKEN_HERE|${BOT_TOKEN}|" config.yml
           sed -i "s|/app/engine|${GITHUB_WORKSPACE}|" config.yml
+          echo "Configuration successful!"
 
       - name: Run bot until job timeout
         working-directory: ../lichess-bot
+        env:
+          PYTHONUNBUFFERED: 1
         run: python3 lichess-bot.py
