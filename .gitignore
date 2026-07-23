@@ -39,3 +39,4 @@ __pycache__/
 Thumbs.db
 config.yml
 bridge/config.yml
+!deploy/config.yml

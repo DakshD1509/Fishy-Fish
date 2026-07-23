@@ -1,0 +1,69 @@
+# lichess-bot configuration for the Wizard engine — tuned for BULLET rating climb.
+# Wizard is a Stockfish-15.1 derivative (GPL-3) with an integrated Polyglot book.
+# Paths are the container layout produced by the Dockerfile (/app/engine/...).
+
+token: "PASTE_YOUR_BOT_TOKEN_HERE"     # Lichess BOT token with bot:play scope (injected by entrypoint)
+url: "https://lichess.org/"
+
+engine:
+  dir: "/app/engine"                   # folder holding the engine binary
+  working_dir: "/app/engine"           # so relative book/ paths resolve
+  name: "stockfish"                    # the binary produced by `make` in stockfish_src/src
+  protocol: "uci"
+  ponder: true                         # think on the opponent's clock — a real bullet-rating win
+
+  polyglot:
+    enabled: false
+    book:
+      standard:
+        - book/komodo.bin
+    min_weight: 1
+    selection: "weighted_random"
+    max_depth: 12
+
+  uci_options:
+    Threads: 4                         # runner has ~4 vCPU; 3 for the engine, 1 for bridge/OS
+    Hash: 512                          # MB
+    Move Overhead: 150                 # ms; lowered from 400 — 0 flag losses gave margin to spend on depth (converts draws->wins). Override per-deploy with the MOVE_OVERHEAD env var.
+
+# --- Seek games actively (drives the rating climb) ---
+matchmaking:
+  allow_matchmaking: false
+  challenge_variant: "standard"
+  challenge_timecontrol: "bullet"      # bullet: engines overperform most (opponents flag/blunder)
+  challenge_initial_time: 60           # 1+1 bullet
+  challenge_increment: 1               # +1s/move: neutralizes runner->Lichess latency
+  challenge_mode: "rated"
+  # Bias matchmaking UPWARD: floor at/above the bot's own rating (skip weaker bots)
+  # with headroom past the 3100 target. NOTE: opponent_rating_difference is left
+  # UNSET on purpose — setting it makes lichess-bot ignore this band.
+  opponent_min_rating: 2600            # never play below this
+  opponent_max_rating: 3300            # up to well above the 3100 goal
+  challenge_timeout: 5                 # minutes idle before seeking a game
+
+# --- Accept incoming challenges (in-band) ---
+challenge:
+  concurrency: 1                       # one game at a time (single instance)
+  sort_by: "best"
+  accept_bot: true
+  only_bot: false
+  max_increment: 10
+  min_increment: 0
+  max_base: 300                        # up to 5 min base
+  min_base: 60                         # >= 1 min base so we accept bullet challenges too
+  variants:
+    - standard
+  time_controls:
+    - bullet
+    - blitz
+  modes:
+    - rated
+
+# Misc
+abort_time: 20                         # seconds to wait before aborting a stalled game
+rate_limiting_delay: 0
+greeting:
+  hello: ""                            # keep quiet (no chat spam)
+  goodbye: ""
+
+pgn_directory: "game_records"          # save played games for later analysis
