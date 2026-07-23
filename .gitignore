@@ -1,0 +1,41 @@
+# Build artifacts
+/build/
+/bin/
+*.o
+*.d
+*.exe
+*.a
+# LTO / -save-temps build temporaries (from the Stockfish-derived Makefile)
+*.s
+*.res
+*.ii
+*.ltrans*
+*.lto_wrapper_args
+*.wpa.args*
+
+# Engine assets (large binaries — distributed separately / fetched at deploy time)
+*.nnue
+*.bin
+/syzygy/          # downloaded tablebases at repo root (NOT the engine's syzygy/ source dir)
+
+# Reference engines & saved test binaries (large; not part of the deliverable)
+engines/
+baseline/
+*.zip
+game_records/
+
+# Claude Code local settings (not for the public repo)
+.claude/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+config.yml
+bridge/config.yml
