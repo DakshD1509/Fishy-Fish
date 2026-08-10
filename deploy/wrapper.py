@@ -89,12 +89,12 @@ def main():
             engine.stdin.write(data)
             engine.stdin.flush()
             
-    t1 = threading.Thread(target=pump_out)
-    t2 = threading.Thread(target=pump_in)
+    t1 = threading.Thread(target=pump_out, daemon=True)
+    t2 = threading.Thread(target=pump_in, daemon=True)
     t1.start()
     t2.start()
-    t1.join()
-    t2.join()
+    engine.wait()
+    sys.exit(engine.returncode)
 
 if __name__ == "__main__":
     main()
