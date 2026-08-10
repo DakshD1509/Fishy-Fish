@@ -29,7 +29,7 @@ engine:
 
   uci_options:
     Threads: 4                         # runner has ~4 vCPU; 3 for the engine, 1 for bridge/OS
-    Hash: 512                          # MB
+    Hash: 2048                         # MB - Maximize Hash for maximum search depth in variants
     Move Overhead: 150                 # ms; lowered from 400 — 0 flag losses gave margin to spend on depth (converts draws->wins). Override per-deploy with the MOVE_OVERHEAD env var.
 
 # --- Seek games actively (drives the rating climb) ---
