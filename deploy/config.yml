@@ -8,7 +8,8 @@ url: "https://lichess.org/"
 engine:
   dir: "/app/engine"                   # folder holding the engine binary
   working_dir: "/app/engine"           # so relative book/ paths resolve
-  name: "stockfish"                    # the binary produced by `make` in stockfish_src/src
+  name: "wrapper.py"                   # the router script
+  interpreter: "python3"               # run the python script
   protocol: "uci"
   ponder: true                         # think on the opponent's clock — a real bullet-rating win
 
@@ -53,6 +54,14 @@ challenge:
   min_base: 60                         # >= 1 min base so we accept bullet challenges too
   variants:
     - standard
+    - chess960
+    - crazyhouse
+    - antichess
+    - atomic
+    - horde
+    - kingofthehill
+    - racingkings
+    - 3check
   time_controls:
     - bullet
     - blitz

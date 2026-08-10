@@ -39,12 +39,20 @@ jobs:
 
       - name: Build engine (embeds NNUE net) + self-test
         run: |
-          git clone --depth 1 -b sf_17 https://github.com/official-stockfish/Stockfish.git stockfish_src
+          git clone --depth 1 -b sf_18 https://github.com/official-stockfish/Stockfish.git stockfish_src
           cd stockfish_src/src
           make -j build ARCH=x86-64-avx2 COMP=gcc
           cp stockfish ../../stockfish
           cd ../../
           ./stockfish bench 2>&1 | tail -3        # must print "Nodes searched"
+
+      - name: Build Fairy Stockfish engine
+        run: |
+          git clone --depth 1 https://github.com/ianfab/Fairy-Stockfish.git fairy_stockfish_src
+          cd fairy_stockfish_src/src
+          make -j build ARCH=x86-64-avx2 COMP=gcc
+          cp stockfish ../../fairy-stockfish
+          cd ../../
 
       - name: Fetch opening book
         run: |
