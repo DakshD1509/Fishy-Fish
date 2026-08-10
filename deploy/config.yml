@@ -8,7 +8,7 @@ url: "https://lichess.org/"
 engine:
   dir: "/app/engine"                   # folder holding the engine binary
   working_dir: "/app/engine"           # so relative book/ paths resolve
-  name: "wrapper.py"                   # the router script
+  name: "deploy/wrapper.py"            # the router script
   interpreter: "python3"               # run the python script
   protocol: "uci"
   ponder: true                         # think on the opponent's clock — a real bullet-rating win
