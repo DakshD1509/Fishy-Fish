@@ -16,7 +16,7 @@ def read_until_uciok(proc):
 
 def main():
     # 1. Read 'uci' from python-chess
-    line = sys.stdin.readline()
+    line = sys.stdin.buffer.readline().decode()
     if line.strip() != 'uci':
         sys.exit(1)
     
@@ -39,7 +39,7 @@ def main():
     options = []
     variant = "standard"
     while True:
-        line = sys.stdin.readline()
+        line = sys.stdin.buffer.readline().decode()
         if not line:
             return
         line_str = line.strip()
