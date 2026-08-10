@@ -13,6 +13,11 @@ engine:
   protocol: "uci"
   ponder: true                         # think on the opponent's clock — a real bullet-rating win
 
+  draw_or_resign:
+    resign_enabled: false
+    resign_for_egtb_minus_two: false
+    offer_draw_enabled: false
+
   polyglot:
     enabled: false
     book:

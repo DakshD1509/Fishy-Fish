@@ -75,7 +75,7 @@ def main():
     # 6. Pipe threads to proxy the rest of the communication
     def pump_out():
         while True:
-            data = engine.stdout.read(1)
+            data = engine.stdout.readline()
             if not data:
                 break
             sys.stdout.buffer.write(data)
@@ -83,7 +83,7 @@ def main():
             
     def pump_in():
         while True:
-            data = sys.stdin.buffer.read(1)
+            data = sys.stdin.buffer.readline()
             if not data:
                 break
             engine.stdin.write(data)
