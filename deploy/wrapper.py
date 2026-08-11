@@ -1,7 +1,6 @@
 import sys
 import subprocess
 import threading
-import time
 
 def read_until_uciok(proc):
     lines = []
@@ -14,7 +13,7 @@ def read_until_uciok(proc):
             break
     return lines
 
-def read_until_readyok(proc):
+def wait_for_readyok(proc):
     while True:
         line = proc.stdout.readline()
         if not line:
@@ -23,95 +22,88 @@ def read_until_readyok(proc):
             break
 
 def main():
-    # 1. Read 'uci' from python-chess
     line = sys.stdin.buffer.readline().decode()
-    if not line:
+    if not line or line.strip() != 'uci':
         sys.exit(1)
-    if line.strip() != 'uci':
-        sys.exit(1)
+        
+    sf = subprocess.Popen(["./stockfish"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    fs = subprocess.Popen(["./fairy-stockfish"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     
-    # 2. Spawn Fairy-Stockfish briefly to get the options
-    dummy = subprocess.Popen(["./fairy-stockfish"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    dummy.stdin.write(b"uci\n")
-    dummy.stdin.flush()
+    sf.stdin.write(b"uci\n")
+    sf.stdin.flush()
+    fs.stdin.write(b"uci\n")
+    fs.stdin.flush()
     
-    # Forward its uci output to lichess-bot so lichess-bot sees all the options
-    uci_lines = read_until_uciok(dummy)
-    for l in uci_lines:
+    read_until_uciok(sf)
+    fs_lines = read_until_uciok(fs)
+    
+    # We forward Fairy-Stockfish's uci output so lichess-bot sees all variant options
+    for l in fs_lines:
         sys.stdout.buffer.write(l)
     sys.stdout.buffer.flush()
     
-    dummy.terminate()
-    dummy.wait()
-    
-    # 3. Buffer options until we see a command that requires the engine
-    options = []
-    variant = "standard"
-    saw_ucinewgame = False
+    active_engine = sf
     
     while True:
-        line = sys.stdin.buffer.readline().decode()
+        line = sys.stdin.buffer.readline()
         if not line:
-            return
-        line_str = line.strip()
+            break
+            
+        line_str = line.decode().strip()
         
         if line_str == "isready":
-            # Mock readyok so python-chess continues initialization
+            sf.stdin.write(b"isready\n")
+            sf.stdin.flush()
+            fs.stdin.write(b"isready\n")
+            fs.stdin.flush()
+            
+            wait_for_readyok(sf)
+            wait_for_readyok(fs)
+            
             sys.stdout.buffer.write(b"readyok\n")
             sys.stdout.buffer.flush()
-            continue
             
         elif line_str.startswith("setoption name UCI_Variant value "):
             variant = line_str.split("value ", 1)[1].strip().lower()
-            options.append(line)
+            is_standard = variant in ["standard", "chess", "normal"]
+            active_engine = sf if is_standard else fs
+            
+            sf.stdin.write(line)
+            sf.stdin.flush()
+            fs.stdin.write(line)
+            fs.stdin.flush()
             
         elif line_str.startswith("setoption name UCI_Chess960 value true"):
-            variant = "chess960"
-            options.append(line)
+            is_standard = False
+            active_engine = fs
             
-        elif line_str.startswith("setoption"):
-            options.append(line)
+            sf.stdin.write(line)
+            sf.stdin.flush()
+            fs.stdin.write(line)
+            fs.stdin.flush()
             
-        elif line_str == "ucinewgame":
-            saw_ucinewgame = True
+        elif line_str.startswith("setoption") or line_str == "ucinewgame":
+            sf.stdin.write(line)
+            sf.stdin.flush()
+            fs.stdin.write(line)
+            fs.stdin.flush()
             
         elif line_str == "quit":
+            sf.stdin.write(b"quit\n")
+            sf.stdin.flush()
+            fs.stdin.write(b"quit\n")
+            fs.stdin.flush()
             sys.exit(0)
             
-        else:
-            # We received 'position', 'go', or something else. Spawn the actual engine!
-            is_standard = variant in ["standard", "chess", "normal"]
-            binary = "./stockfish" if is_standard else "./fairy-stockfish"
-            
-            engine = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            engine.stdin.write(b"uci\n")
-            engine.stdin.flush()
-            
-            # Discard uciok from the real engine
-            read_until_uciok(engine)
-            
-            # Send all buffered options
-            for opt in options:
-                engine.stdin.write(opt.encode())
-            
-            if saw_ucinewgame:
-                engine.stdin.write(b"ucinewgame\n")
-                
-            engine.stdin.write(b"isready\n")
-            engine.stdin.flush()
-            
-            # Wait for real engine to be ready
-            read_until_readyok(engine)
-            
-            # Forward the command that triggered the spawn
-            engine.stdin.write(line.encode())
-            engine.stdin.flush()
+        elif line_str.startswith("position") or line_str.startswith("go") or line_str.startswith("eval"):
+            # Start forwarding commands to the active engine
+            active_engine.stdin.write(line)
+            active_engine.stdin.flush()
             break
             
-    # 6. Pipe threads to proxy the rest of the communication
     def pump_out():
         while True:
-            data = engine.stdout.readline()
+            data = active_engine.stdout.readline()
             if not data:
                 break
             sys.stdout.buffer.write(data)
@@ -122,15 +114,16 @@ def main():
             data = sys.stdin.buffer.readline()
             if not data:
                 break
-            engine.stdin.write(data)
-            engine.stdin.flush()
+            active_engine.stdin.write(data)
+            active_engine.stdin.flush()
             
     t1 = threading.Thread(target=pump_out, daemon=True)
     t2 = threading.Thread(target=pump_in, daemon=True)
     t1.start()
     t2.start()
-    engine.wait()
-    sys.exit(engine.returncode)
+    
+    active_engine.wait()
+    sys.exit(active_engine.returncode)
 
 if __name__ == "__main__":
     main()
