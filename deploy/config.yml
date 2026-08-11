@@ -19,10 +19,21 @@ engine:
     offer_draw_enabled: false
 
   polyglot:
-    enabled: false
+    enabled: true
     book:
       standard:
+        - bridge/books/OPTIMUS2502.bin
         - book/komodo.bin
+      atomic:
+        - bridge/books/atomic.bin
+      horde:
+        - bridge/books/horde.bin
+      racingkings:
+        - bridge/books/racingKings.bin
+      crazyhouse:
+        - bridge/books/crazyhouse.bin
+      kingofthehill:
+        - bridge/books/kingOfTheHill.bin
     min_weight: 1
     selection: "weighted_random"
     max_depth: 12
