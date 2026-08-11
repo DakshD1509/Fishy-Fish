@@ -37,7 +37,17 @@ jobs:
           sudo apt-get install -y --no-install-recommends g++ make python3 python3-pip python3-venv curl
           g++ --version | head -1
 
+      - name: Cache Engines
+        id: cache-engines
+        uses: actions/cache@v4
+        with:
+          path: |
+            stockfish
+            fairy-stockfish
+          key: ${{ runner.os }}-engines-v1
+
       - name: Build engine (embeds NNUE net) + self-test
+        if: steps.cache-engines.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 -b sf_18 https://github.com/official-stockfish/Stockfish.git stockfish_src
           cd stockfish_src/src
@@ -47,6 +57,7 @@ jobs:
           ./stockfish bench 2>&1 | tail -3        # must print "Nodes searched"
 
       - name: Build Fairy Stockfish engine
+        if: steps.cache-engines.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 https://github.com/ianfab/Fairy-Stockfish.git fairy_stockfish_src
           cd fairy_stockfish_src/src
