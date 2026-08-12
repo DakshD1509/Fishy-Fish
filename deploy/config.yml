@@ -23,6 +23,7 @@ engine:
     book:
       standard:
         - /app/engine/bridge/books/OPTIMUS2502.bin
+        - /app/engine/bridge/books/komodo.bin
       atomic:
         - /app/engine/bridge/books/atomic.bin
       horde:
