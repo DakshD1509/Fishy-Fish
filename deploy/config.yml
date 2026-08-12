@@ -23,17 +23,14 @@ engine:
     book:
       standard:
         - /app/engine/bridge/books/OPTIMUS2502.bin
-        - /app/engine/book/komodo.bin
       atomic:
         - /app/engine/bridge/books/atomic.bin
       horde:
         - /app/engine/bridge/books/horde.bin
       racingkings:
-        - /app/engine/bridge/books/racingKings.bin
+        - /app/engine/bridge/books/racingkings.bin
       crazyhouse:
         - /app/engine/bridge/books/crazyhouse.bin
-      kingofthehill:
-        - /app/engine/bridge/books/kingOfTheHill.bin
     min_weight: 1
     selection: "weighted_random"
     max_depth: 12
